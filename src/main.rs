@@ -8,20 +8,19 @@ fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
 
-    /*
-     * For examples (and inspiration), head to
-     *
-     *     https://github.com/Rahix/avr-hal/tree/main/examples
-     *
-     * NOTE: Not all examples were ported to all boards!  There is a good chance though, that code
-     * for a different board can be adapted for yours.  The Arduino Uno currently has the most
-     * examples available.
-     */
-
-    let mut led = pins.d13.into_output();
+    let mut verde = pins.d3.into_output();
+    let mut amarillo = pins.d4.into_output();
+    let mut rojo = pins.d5.into_output();
 
     loop {
-        led.toggle();
+        verde.toggle();
         arduino_hal::delay_ms(1000);
+        verde.toggle();
+        amarillo.toggle();
+        arduino_hal::delay_ms(1000);
+        amarillo.toggle();
+        rojo.toggle();
+        arduino_hal::delay_ms(1000);
+        rojo.toggle();
     }
 }
