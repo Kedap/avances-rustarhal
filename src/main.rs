@@ -1,82 +1,33 @@
+#![feature(asm_experimental_arch)]
 #![no_std]
 #![no_main]
 
-use arduino_hal::{
-    delay_ms,
-    port::{mode, Pin, PinOps},
-    simple_pwm::{IntoPwmPin, Prescaler, Timer2Pwm},
+use core::{
+    arch::asm,
+    ptr::{read_volatile, write_volatile},
 };
-use panic_halt as _;
+const DDRB: *mut u8 = 0x24 as *mut u8;
+const PORTB: *mut u8 = 0x25 as *mut u8;
+const CPU_SPEED: u32 = 16_000_000;
 
-struct Motor<T, U, V, W>
-where
-    T: PinOps,
-    U: PinOps,
-    V: arduino_hal::simple_pwm::PwmPinOps<W> + arduino_hal::port::PinOps,
-{
-    input1: Pin<mode::Output, T>,
-    input2: Pin<mode::Output, U>,
-    pwm: Pin<mode::PwmOutput<W>, V>,
-}
-
-#[arduino_hal::entry]
-fn main() -> ! {
-    let dp = arduino_hal::Peripherals::take().unwrap();
-    let pins = arduino_hal::pins!(dp);
-    let timer3 = Timer2Pwm::new(dp.TC2, Prescaler::Prescale64);
-
-    let motor_in1 = pins.d9.into_output();
-    let motor_in2 = pins.d10.into_output();
-    let mut pwm_a = pins.d11.into_output().into_pwm(&timer3);
-    pwm_a.enable();
-    let mut stby = pins.d8.into_output();
-    let mut motor1 = Motor {
-        input1: motor_in1,
-        input2: motor_in2,
-        pwm: pwm_a,
-    };
-
-    stby.set_high();
-
+#[no_mangle]
+pub extern "C" fn main() {
+    unsafe { write_volatile(DDRB, 0b11111111) };
     loop {
-        control_motor(50, &mut motor1);
-        control_motor(100, &mut motor1);
-        control_motor(220, &mut motor1);
-        control_motor(225, &mut motor1);
+        let mut ports_value = unsafe { read_volatile(PORTB) };
+        ports_value = ports_value ^ (1 << 5);
+        sleep(1);
+        unsafe { write_volatile(PORTB, ports_value) };
     }
 }
 
-fn control_motor<T, U, V, W>(variable_pwm: u8, motor: &mut Motor<T, U, V, W>)
-where
-    T: PinOps,
-    U: PinOps,
-    V: arduino_hal::simple_pwm::PwmPinOps<W> + arduino_hal::port::PinOps,
-{
-    for _ in 0..20 {
-        motor.input1.set_low();
-        motor.input2.set_high();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
+fn sleep(time: u32) {
+    for _ in 0..(CPU_SPEED / 10 * time) {
+        unsafe { asm!("nop") }
     }
+}
 
-    for _ in 0..20 {
-        motor.input1.set_low();
-        motor.input2.set_low();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
-    }
-
-    for _ in 0..20 {
-        motor.input1.set_high();
-        motor.input2.set_low();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
-    }
-
-    for _ in 0..20 {
-        motor.input1.set_low();
-        motor.input2.set_low();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
-    }
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
 }
