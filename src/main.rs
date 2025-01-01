@@ -1,82 +1,64 @@
 #![no_std]
 #![no_main]
 
-use arduino_hal::{
-    delay_ms,
-    port::{mode, Pin, PinOps},
-    simple_pwm::{IntoPwmPin, Prescaler, Timer2Pwm},
-};
+use arduino_hal::{hal, DefaultClock};
+use avr_device::interrupt;
+use core::cell::RefCell;
 use panic_halt as _;
 
-struct Motor<T, U, V, W>
-where
-    T: PinOps,
-    U: PinOps,
-    V: arduino_hal::simple_pwm::PwmPinOps<W> + arduino_hal::port::PinOps,
-{
-    input1: Pin<mode::Output, T>,
-    input2: Pin<mode::Output, U>,
-    pwm: Pin<mode::PwmOutput<W>, V>,
+type Console = hal::usart::Usart0<DefaultClock>;
+static CONSOLE: interrupt::Mutex<RefCell<Option<Console>>> =
+    interrupt::Mutex::new(RefCell::new(None));
+
+macro_rules! print {
+    ($($t:tt)*) => {
+        interrupt::free(|cs| {
+            if let Some(console) = CONSOLE.borrow(cs).borrow_mut().as_mut() {
+                let _ = ufmt::uwrite!(console, $($t)*);
+            }
+        })
+    };
+}
+
+macro_rules! println {
+    ($($t:tt)*) => {
+        interrupt::free(|cs| {
+            if let Some(console) = CONSOLE.borrow(cs).borrow_mut().as_mut() {
+                let _ = ufmt::uwriteln!(console, $($t)*);
+            }
+        })
+    };
+}
+
+fn put_console(console: Console) {
+    interrupt::free(|cs| {
+        *CONSOLE.borrow(cs).borrow_mut() = Some(console);
+    })
+}
+
+fn subfuncion() {
+    println!("Podemos usar el println en serial");
+}
+
+fn demo_print_sinln() {
+    for i in 0..10 {
+        print!("{} ", i);
+    }
+    println!("Numeros");
 }
 
 #[arduino_hal::entry]
 fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
-    let timer3 = Timer2Pwm::new(dp.TC2, Prescaler::Prescale64);
+    let serial = arduino_hal::default_serial!(dp, pins, 9600);
+    put_console(serial);
 
-    let motor_in1 = pins.d9.into_output();
-    let motor_in2 = pins.d10.into_output();
-    let mut pwm_a = pins.d11.into_output().into_pwm(&timer3);
-    pwm_a.enable();
-    let mut stby = pins.d8.into_output();
-    let mut motor1 = Motor {
-        input1: motor_in1,
-        input2: motor_in2,
-        pwm: pwm_a,
-    };
-
-    stby.set_high();
+    println!("Hola desde main y Rust!");
+    subfuncion();
+    demo_print_sinln();
 
     loop {
-        control_motor(50, &mut motor1);
-        control_motor(100, &mut motor1);
-        control_motor(220, &mut motor1);
-        control_motor(225, &mut motor1);
-    }
-}
-
-fn control_motor<T, U, V, W>(variable_pwm: u8, motor: &mut Motor<T, U, V, W>)
-where
-    T: PinOps,
-    U: PinOps,
-    V: arduino_hal::simple_pwm::PwmPinOps<W> + arduino_hal::port::PinOps,
-{
-    for _ in 0..20 {
-        motor.input1.set_low();
-        motor.input2.set_high();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
-    }
-
-    for _ in 0..20 {
-        motor.input1.set_low();
-        motor.input2.set_low();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
-    }
-
-    for _ in 0..20 {
-        motor.input1.set_high();
-        motor.input2.set_low();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
-    }
-
-    for _ in 0..20 {
-        motor.input1.set_low();
-        motor.input2.set_low();
-        motor.pwm.set_duty(variable_pwm);
-        delay_ms(100);
+        // NOP
     }
 }
