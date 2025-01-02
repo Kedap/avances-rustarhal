@@ -7,17 +7,6 @@ use crate::serial::CONSOLE;
 use avr_device::interrupt;
 use panic_halt as _;
 
-fn subfuncion() {
-    println!("Podemos usar el println en serial");
-}
-
-fn demo_print_sinln() {
-    for i in 0..10 {
-        print!("{} ", i);
-    }
-    println!("Numeros");
-}
-
 #[arduino_hal::entry]
 fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
@@ -25,11 +14,23 @@ fn main() -> ! {
     let serial = arduino_hal::default_serial!(dp, pins, 9600);
     serial::put_console(serial);
 
-    println!("Hola desde main y Rust modificado!");
-    subfuncion();
-    demo_print_sinln();
+    let mut adc = arduino_hal::Adc::new(dp.ADC, Default::default());
+    let mut led = pins.d11.into_output();
+    let mut s0 = pins.a0.into_output();
+    let mut s1 = pins.a1.into_output();
+    let mut s2 = pins.a2.into_output();
+    let mut s3 = pins.a3.into_output();
+    led.set_high();
+    println!("Setup completado");
 
     loop {
-        // NOP
+        s0.set_high();
+        s1.set_low();
+        s2.set_low();
+        s3.set_low();
+
+        let lectura = adc.read_blocking(&arduino_hal::adc::channel::ADC6);
+        println!("Lectura: {}", lectura);
+        arduino_hal::delay_ms(100);
     }
 }
