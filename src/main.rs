@@ -20,17 +20,19 @@ fn main() -> ! {
     let mut s1 = pins.a1.into_output();
     let mut s2 = pins.a2.into_output();
     let mut s3 = pins.a3.into_output();
-    led.set_high();
     println!("Setup completado");
 
     loop {
-        s0.set_high();
+        led.set_high();
+        s0.set_low();
         s1.set_low();
         s2.set_low();
         s3.set_low();
 
-        let lectura = adc.read_blocking(&arduino_hal::adc::channel::ADC6);
-        println!("Lectura: {}", lectura);
+        println!(
+            "Lectura: {}",
+            adc.read_blocking(&arduino_hal::adc::channel::ADC6)
+        );
         arduino_hal::delay_ms(100);
     }
 }
