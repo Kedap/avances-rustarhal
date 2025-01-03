@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod sensores;
 mod serial;
 
 use crate::serial::CONSOLE;
