@@ -1,10 +1,10 @@
 #![no_std]
 #![no_main]
 
+mod comun;
 mod sensores;
-mod serial;
 
-use crate::serial::CONSOLE;
+use crate::comun::{ToBin, CONSOLE};
 use avr_device::interrupt;
 use panic_halt as _;
 
@@ -13,7 +13,7 @@ fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 9600);
-    serial::put_console(serial);
+    comun::put_console(serial);
 
     let mut adc = arduino_hal::Adc::new(dp.ADC, Default::default());
     let mut led = pins.d11.into_output();
@@ -21,13 +21,13 @@ fn main() -> ! {
     let mut s1 = pins.a1.into_output();
     let mut s2 = pins.a2.into_output();
     let mut s3 = pins.a3.into_output();
-    println!("Setup completado");
+    led.set_high();
+    println!("Setup completado {:#?}", 15.to_bin());
 
     loop {
-        led.set_high();
         s0.set_low();
         s1.set_low();
-        s2.set_low();
+        s2.set_high();
         s3.set_low();
 
         println!(

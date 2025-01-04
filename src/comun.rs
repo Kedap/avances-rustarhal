@@ -34,3 +34,17 @@ pub fn put_console(console: Console) {
         *CONSOLE.borrow(cs).borrow_mut() = Some(console);
     })
 }
+
+pub trait ToBin {
+    fn to_bin(&self) -> [u8; 8];
+}
+
+impl ToBin for u8 {
+    fn to_bin(&self) -> [u8; 8] {
+        let mut a = [0; 8];
+        (0..8).for_each(|i| {
+            a[i] = (self >> i) & 1;
+        });
+        a
+    }
+}
