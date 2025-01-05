@@ -1,44 +1,47 @@
-use core::marker::PhantomData;
-
-use arduino_hal::{
-    adc::{AdcChannel, AdcOps},
-    hal::Atmega,
-    port::{mode, Pin},
-    Pins,
-};
+use arduino_hal::port::{mode, Pin, PinOps};
 use panic_halt as _;
+use ufmt::{uDebug, uwrite};
 
-struct Sensores<PinAnalogico, OpsAdc>
+use crate::comun::ToBin;
+
+pub struct Sensores<PinAnalogico, T, U, V, W, X>
 where
-    OpsAdc: AdcOps<Atmega>,
-    PinAnalogico: AdcChannel<Atmega, OpsAdc>,
+    PinAnalogico: arduino_hal::adc::AdcChannel<arduino_hal::hal::Atmega, arduino_hal::pac::ADC>,
+    T: PinOps,
+    U: PinOps,
+    V: PinOps,
+    W: PinOps,
+    X: PinOps,
 {
-    phantom: PhantomData<OpsAdc>,
     adc: arduino_hal::Adc,
-    led: Pin<mode::Output>,
-    s0: Pin<mode::Output>,
-    s1: Pin<mode::Output>,
-    s2: Pin<mode::Output>,
-    s3: Pin<mode::Output>,
+    led: Pin<mode::Output, T>,
+    s0: Pin<mode::Output, U>,
+    s1: Pin<mode::Output, V>,
+    s2: Pin<mode::Output, W>,
+    s3: Pin<mode::Output, X>,
     lector: PinAnalogico,
+    valores: [u16; 16],
 }
 
-impl<PinAnalogico, OpsAdc> Sensores<PinAnalogico, OpsAdc>
+impl<PinAnalogico, T, U, V, W, X> Sensores<PinAnalogico, T, U, V, W, X>
 where
-    OpsAdc: AdcOps<Atmega>,
-    PinAnalogico: AdcChannel<Atmega, OpsAdc>,
+    PinAnalogico: arduino_hal::adc::AdcChannel<arduino_hal::hal::Atmega, arduino_hal::pac::ADC>,
+    T: PinOps,
+    U: PinOps,
+    V: PinOps,
+    W: PinOps,
+    X: PinOps,
 {
-    fn new(
+    pub fn new(
         adc: arduino_hal::Adc,
-        led: Pin<mode::Output>,
-        s0: Pin<mode::Output>,
-        s1: Pin<mode::Output>,
-        s2: Pin<mode::Output>,
-        s3: Pin<mode::Output>,
+        led: Pin<mode::Output, T>,
+        s0: Pin<mode::Output, U>,
+        s1: Pin<mode::Output, V>,
+        s2: Pin<mode::Output, W>,
+        s3: Pin<mode::Output, X>,
         lector: PinAnalogico,
     ) -> Self {
-        Self {
-            phantom: PhantomData,
+        let mut s = Self {
             adc,
             led,
             s0,
@@ -46,19 +49,72 @@ where
             s2,
             s3,
             lector,
-        }
+            valores: [0; 16],
+        };
+        s.s0.set_low();
+        s.s1.set_low();
+        s.s2.set_low();
+        s.s3.set_low();
+        s
     }
 
-    //fn new_default(pins: Pins) -> Self {
-    //    Self {
-    //        phantom: PhantomData,
-    //        adc: arduino_hal::Adc::new(dp.ADC, Default::default()),
-    //        led: pins.d11.into_output(),
-    //        s0: pins.a0.into_output(),
-    //        s1: pins.a1.into_output(),
-    //        s2: a2.into_output(),
-    //        s3: a3.into_output(),
-    //        lector: arduino_hal::adc::channel::ADC6,
-    //    }
-    //}
+    pub fn actualizar_valores(&mut self) {
+        self.led.set_high();
+        (0..16).for_each(|i| {
+            let digital = (i as u8).to_bin();
+            if digital[0] == 0 {
+                self.s0.set_low();
+            } else {
+                self.s0.set_high();
+            }
+            if digital[1] == 0 {
+                self.s1.set_low();
+            } else {
+                self.s1.set_high();
+            }
+            if digital[2] == 0 {
+                self.s2.set_low();
+            } else {
+                self.s2.set_high();
+            }
+            if digital[3] == 0 {
+                self.s3.set_low();
+            } else {
+                self.s3.set_high();
+            }
+            self.valores[i] = self.adc.read_blocking(&self.lector);
+        });
+    }
+}
+
+impl<PinAnalogico, T, U, V, WW, X> uDebug for Sensores<PinAnalogico, T, U, V, WW, X>
+where
+    PinAnalogico: arduino_hal::adc::AdcChannel<arduino_hal::hal::Atmega, arduino_hal::pac::ADC>,
+    T: PinOps,
+    U: PinOps,
+    V: PinOps,
+    WW: PinOps,
+    X: PinOps,
+{
+    fn fmt<W>(&self, f: &mut ufmt::Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: ufmt::uWrite + ?Sized,
+    {
+        uwrite!(f, "{:?}", self.valores)
+    }
+}
+
+#[macro_export]
+macro_rules! sensores_default {
+    ($dp:ident, $pins:ident) => {
+        Sensores::new(
+            arduino_hal::Adc::new($dp.ADC, Default::default()),
+            $pins.d11.into_output(),
+            $pins.a0.into_output(),
+            $pins.a1.into_output(),
+            $pins.a2.into_output(),
+            $pins.a3.into_output(),
+            arduino_hal::adc::channel::ADC6,
+        )
+    };
 }
