@@ -59,7 +59,9 @@ where
     }
 
     pub fn actualizar_valores(&mut self) {
-        self.led.set_high();
+        if !self.led.is_set_high() {
+            self.led.set_high();
+        }
         (0..16).for_each(|i| {
             let digital = (i as u8).to_bin();
             if digital[0] == 0 {
