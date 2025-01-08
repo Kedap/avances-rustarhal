@@ -36,15 +36,13 @@ pub fn put_console(console: Console) {
 }
 
 pub trait ToBin {
-    fn to_bin(&self) -> [u8; 4];
+    fn to_bin(&self) -> [bool; 4];
 }
 
 impl ToBin for u8 {
-    fn to_bin(&self) -> [u8; 4] {
-        let mut bin_array = [0; 4];
-        (0..4).for_each(|i| {
-            bin_array[i] = (self >> i) & 1;
-        });
+    fn to_bin(&self) -> [bool; 4] {
+        let mut bin_array = [false; 4];
+        (0..4).for_each(|i| bin_array[i] = (self >> i) & 1 != 0);
         bin_array
     }
 }

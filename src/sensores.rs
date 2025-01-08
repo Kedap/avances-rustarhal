@@ -64,25 +64,25 @@ where
         }
         (0..16).for_each(|i| {
             let digital = (i as u8).to_bin();
-            if digital[0] == 0 {
-                self.s0.set_low();
-            } else {
+            if digital[0] {
                 self.s0.set_high();
-            }
-            if digital[1] == 0 {
-                self.s1.set_low();
             } else {
+                self.s0.set_low();
+            }
+            if digital[1] {
                 self.s1.set_high();
-            }
-            if digital[2] == 0 {
-                self.s2.set_low();
             } else {
+                self.s1.set_low();
+            }
+            if digital[2] {
                 self.s2.set_high();
-            }
-            if digital[3] == 0 {
-                self.s3.set_low();
             } else {
+                self.s2.set_low();
+            }
+            if digital[3] {
                 self.s3.set_high();
+            } else {
+                self.s3.set_low();
             }
             self.valores[i] = self.adc.read_blocking(&self.lector);
         });
