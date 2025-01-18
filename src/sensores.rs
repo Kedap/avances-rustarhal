@@ -102,7 +102,10 @@ where
     where
         W: ufmt::uWrite + ?Sized,
     {
-        uwrite!(f, "{:?}", self.valores)
+        for valor in self.valores.iter().rev() {
+            uwrite!(f, "{}\t", valor)?;
+        }
+        Ok(())
     }
 }
 
